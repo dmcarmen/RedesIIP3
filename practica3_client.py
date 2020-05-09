@@ -44,14 +44,6 @@ class VideoClient(object):
 		# Lo mostramos en el GUI
 		self.app.setImageData("video", img_tk, fmt = 'PhotoImage')
 
-''' esto en las practicas, no veo bn diferencia...
-		# Compresión JPG al 50% de resolución (se puede variar)
-		encode_param = [cv2.IMWRITE_JPEG_QUALITY,50]
-		result,encimg = cv2.imencode('.jpg',img,encode_param)
-		if result == False:
-			print('Error al codificar imagen')
-		encimg = encimg.tobytes()
-'''
 		# Los datos "encimg" ya están listos para su envío por la red
 		#enviar(encimg)
 
