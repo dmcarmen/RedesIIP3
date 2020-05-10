@@ -1,112 +1,123 @@
-import requests
-import utils as u
+import socket
 
-urlIni = 'https://vega.ii.uam.es:8080/'
+class Users_descubrimiento:
+    url = 'vega.ii.uam.es'
+    puerto = 8000
+    buffer_tam = 2048
+    socket = None
 
+    def __init__(self):
+        self.socket = self.create_socket_TCP()
 
-def register(nick, ip_address, port, password, protocols):
-    """
-        Nombre: register
-        Descripcion: Funcion
-        Argumentos:
-            -nick:
-        Retorno:
-    """
-    # Enviamos la peticion al servidor
-    url = urlIni + 'register'
-    args = {'nick': nick, 'ip_address': ip_address, 'port': port, 'password': password, 'protocols': protocols}
-    try:
-        r = requests.post(url, json=args)
-    except requests.ConnectionError:
-        print("Error de conexion")
-        return
+    def send_recv(self, msg):
+        try:
+            self.socket.send(bytes(msg, 'utf-8'))
+            msg = self.socket.recv(self.buffer_tam)
+            msg = msg.decode('utf-8')
+        except:
+            print("Error de conexion.")
+            return None
+        return msg
 
-    # Si la peticion es correcta guardamos la clave privada del usuario e imprimimos su ID
-    if r.status_code == requests.codes.ok:
-        answer = r.json()
-        nick = answer.get('nick')
-        ts = answer.get('ts') # TODO que hacer con esto
-        #print(r) #TODO te dan esto ya???
-        print("S->C: OK WELCOME {} {}".format(nick, ts))
-    else:
-        u.error(r)
+    def create_socket_TCP(self):
+        """
+            Nombre: create_socket_TCP
+            Descripcion: Funcion
+            Argumentos:
+                -nick:
+            Retorno:
+        """
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            print("Socket creado")
+        except socket.error as err:
+            print("La creación del socket falló: error {}".format(err))
+            return None
 
+        s.connect((self.url, self.puerto)) #TODO ctrl errores
+        return s
 
-def query(nick):
-    """
-        Nombre: query
-        Descripcion:
-        Argumentos:
-            -nick: nick del usuario.
-        Retorno:
-    """
+    def quit(self):
+        """
+            Nombre: quit
+            Descripcion: Funcion
+            Argumentos:
+            Retorno:
+        """
+        msg = self.send_recv('QUIT')
+        if msg is not None:
+            print(msg)
+            self.socket.close()
 
-    # Enviamos la peticion a la API
-    url = urlIni + 'query'
-    args = {'nick': nick} #TODO maybe es name?
-    try:
-        r = requests.post(url, json=args)
-    except requests.ConnectionError:
-        print("Error de conexion")
-        return
-    # Si es correcta imprimimos todas las coincidencias devueltas
-    if r.status_code == requests.codes.ok:
-        answers = r.json()
-        nick = answer.get('nick')
-        ip_address = answer.get('ip_address')
-        port = answer.get('port')
-        protocols = answer.get('protocols')
-        print("{} {} {} {}:".format(nick, ip_address, port, protocols))
-    else:
-        u.error(r)
+    def register(self, nick, ip_address, port, password, protocols):
+        """
+            Nombre: register
+            Descripcion: Funcion
+            Argumentos:
+                -nick: nick del usuario.
+            Retorno:
+        """
+        msg = "REGISTER {} {} {} {} {}".format(nick, ip_address, port, password, protocols)
 
+        msg = self.send_recv(msg)
+        if msg == 'NOK WRONG_PASS' or None:
+            print(msg) #TODO control de errores
+        else:
+            print(msg)
 
-def list_users():
-    """
-        Nombre: list_users
-        Descripcion:
-        Argumentos: Ninguno
-        Retorno:
-    """
+    def query(self, nick):
+        """
+            Nombre: query
+            Descripcion: Funcion
+            Argumentos:
+                -nick: nick del usuario.
+            Retorno:
+        """
+        msg = "QUERY {}".format(nick)
+        msg = self.send_recv(msg)
+        if msg == 'NOK USER_UNKNOWN' or None:
+            print(msg) #TODO control de errores
+        else:
+            print(msg)
+            user_info = msg.split(' ')
+            user_info[4] = int(user_info[4])
+            return user_info[2:] #TODO ver cuando used
 
-    # Envia la peticion a la API
-    url = urlIni + 'list_users'
-    try:
-        r = requests.post(url)
-    except requests.ConnectionError:
-        print("Error de conexion")
-        return
+    def list_users(self):
+        """
+            Nombre: list_users
+            Descripcion: Funcion
+            Argumentos:
+            Retorno:
+        """
+        msg = self.send_recv("LIST_USERS")
+        if msg == 'NOK USER_UNKNOWN' or None:
+            print(msg) #TODO control de errores
+        else:
+            #TODO ver si drama de no entran
+            n_users = int(msg.split(' ')[2])
+            users = msg.split('#')
+            # Si hay menos users hay que seguir pidiendo datetes
+            while len(users) - 1 < n_users or msg[-1] != '#':
+                msg = msg + self.socket.recv(self.buffer_tam).decode('utf-8')
+                users = msg.split('#')
 
-    # Si la peticion es correcta imprimimos el ID eliminado
-    if r.status_code == requests.codes.ok:
-        answers = r.json()
-        i = 0
-        for answer in answers:
-            print("[{}] {} {} {} {}".format(i + 1, nick, ip_address, port, protocols))
-            i += 1
-    else:
-        u.error(r)
+            print('Lista de {} usuarios:'.format(n_users))
+            # primer usuario
+            user1 = users[0].split(' ')[3:]
+            print(' '.join(user1))
+            # resto
+            for u in users[1:]:
+                print(u)
 
+def prueba():
+    bicho = Users_descubrimiento()
+ #   bicho.register('holi', 1, 2, 3, 4)
+    bicho.list_users()
+    query = bicho.query('usuario1')
+    print(query)
+   # bicho.register('holi', 1, 2, 3, 4)
+    #bicho.register('holi', 1, 2, 4, 4)
+    #bicho.quit()
 
-def quit():
-    """
-        Nombre: quit
-        Descripcion:
-        Argumentos: Ninguno
-        Retorno:
-    """
-
-    # Enviamos la peticion a la API
-    url = urlIni + 'quit'#TODO check que esto funcione asi y en general
-    args = {'userID': user_id}
-    try:
-        r = requests.post(url)
-    except requests.ConnectionError:
-        print("Error de conexion")
-        return None
-
-    if r.status_code == requests.codes.ok:
-        print("oki")#TODO print lo que sea
-    else:
-        u.error(r)
-        return None
+prueba()

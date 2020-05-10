@@ -3,14 +3,33 @@ from appJar import gui
 from PIL import Image, ImageTk
 import numpy as np
 import cv2
+import users
+import control
+import video
+import threading
+
 
 class VideoClient(object):
+	##############################################
+	descubrimiento = None
+	control = None
 
+	nick = "usuario1" # "usuario2"
+	ip_address = "127.0.0.1"
+	tcp_port = 49152 # 49154
+	udp_port = 49153 # 49155
+	password = "kk"
+	protocols = "V0"
+
+	dst_ip = None
+	dst_port = None
+
+	##############################################
 	def __init__(self, window_size):
 
 		# Creamos una variable que contenga el GUI principal
 		self.app = gui("Redes2 - P2P", window_size)
-		self.app.setGuiPadding(10,10)
+		self.app.setGuiPadding(10)
 
 		# Preparación del interfaz
 		self.app.addLabel("title", "Cliente Multimedia P2P - Redes2 ")
@@ -29,6 +48,15 @@ class VideoClient(object):
 		# Debe actualizarse con información útil sobre la llamada (duración, FPS, etc...)
 		self.app.addStatusbar(fields=2)
 
+		############################################
+		self.descubrimiento = users.Users_descubrimiento()
+		self.descubrimiento.register(self.nick, self.ip_address, self.tcp_port, self.password, self.protocols)
+		self.control = control.Control(self, self.descubrimiento, self.ip_address, self.tcp_port, self.udp_port)
+		thread = threading.Thread(target=self.control.listening)
+		thread.start()
+
+	#############################################
+
 	def start(self):
 		self.app.go()
 
@@ -37,15 +65,18 @@ class VideoClient(object):
 
 		# Capturamos un frame de la cámara o del vídeo
 		ret, frame = self.cap.read()
-		frame = cv2.resize(frame, (640,480))
-		cv2_im = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
-		img_tk = ImageTk.PhotoImage(Image.fromarray(cv2_im))
+		try:
+			frame = cv2.resize(frame, (640, 480))
+			cv2_im = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+			img_tk = ImageTk.PhotoImage(Image.fromarray(cv2_im))
+			# Lo mostramos en el GUI
+			self.app.setImageData("video", img_tk, fmt='PhotoImage')
+		except Exception:
+			print()
 
-		# Lo mostramos en el GUI
-		self.app.setImageData("video", img_tk, fmt = 'PhotoImage')
 
-		# Los datos "encimg" ya están listos para su envío por la red
-		#enviar(encimg)
+	# Los datos "encimg" ya están listos para su envío por la red
+	# enviar(encimg)
 
 	# Establece la resolución de la imagen capturada
 	def setImageResolution(self, resolution):
@@ -65,22 +96,31 @@ class VideoClient(object):
 	# Función que gestiona los callbacks de los botones
 	def buttonsCallback(self, button):
 
-	    if button == "Salir":
-	    	# Salimos de la aplicación
-	        self.app.stop()
-	    elif button == "Conectar":
-	        # Entrada del nick del usuario a conectar
-	        nick = self.app.textBox("Conexión",
-	        	"Introduce el nick del usuario a buscar")
+		if button == "Salir":
+			# Salimos de la aplicación
+			self.app.stop()
+		elif button == "Conectar":
+			# Entrada del nick del usuario a conectar
+			nick = self.app.textBox("Conexión",
+									"Introduce el nick del usuario a buscar")
+			info = self.descubrimiento.query(nick)
+			self.dst_ip = info[1]
+			self.dst_port = info[2]
+			self.control.calling(self.nick, info[1], info[2])
+
+		elif button == "Colgar":
+			if self.dst_ip is not None:
+				self.control.call_end(self.nick,self.dst_ip, self.dst_port)
+				self.dst_ip = None
+				self.dst_port = None
+
 
 if __name__ == '__main__':
-
 	vc = VideoClient("640x520")
 
 	# Crear aquí los threads de lectura, de recepción y,
 	# en general, todo el código de inicialización que sea necesario
 	# ...
-
 
 	# Lanza el bucle principal del GUI
 	# El control ya NO vuelve de esta función, por lo que todas las
