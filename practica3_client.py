@@ -41,6 +41,13 @@ class VideoClient(object):
 		self.app.setPollTime(20)
 		self.app.registerEvent(self.capturaVideo)
 
+
+		# La ventana del otro video
+		self.app.startSubWindow("2")
+		self.app.addImage("El otro", "imgs/webcam.gif")
+		self.app.stopSubWindow()
+		self.app.hideSubWindow("2")
+
 		# Añadir los botones
 		self.app.addButtons(["Conectar", "Colgar", "Salir"], self.buttonsCallback)
 
@@ -65,18 +72,21 @@ class VideoClient(object):
 
 		# Capturamos un frame de la cámara o del vídeo
 		ret, frame = self.cap.read()
-		try:
-			frame = cv2.resize(frame, (640, 480))
-			cv2_im = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-			img_tk = ImageTk.PhotoImage(Image.fromarray(cv2_im))
-			# Lo mostramos en el GUI
-			self.app.setImageData("video", img_tk, fmt='PhotoImage')
-		except Exception:
-			print()
+		if ret is True:
+			try:
+				frame = cv2.resize(frame, (640, 480))
+				cv2_im = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+				img_tk = ImageTk.PhotoImage(Image.fromarray(cv2_im))
+				# Lo mostramos en el GUI
+				self.app.setImageData("video", img_tk, fmt='PhotoImage')
+			except Exception:
+				hola = 0
 
-
-	# Los datos "encimg" ya están listos para su envío por la red
-	# enviar(encimg)
+			return frame
+		else:
+			print("se liooo")
+		# Los datos "encimg" ya están listos para su envío por la red
+		# enviar(encimg)
 
 	# Establece la resolución de la imagen capturada
 	def setImageResolution(self, resolution):

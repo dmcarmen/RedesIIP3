@@ -4,6 +4,7 @@ import queue
 from PIL import Image, ImageTk
 import numpy as np
 import cv2
+import threading
 
 
 class Video:
@@ -16,6 +17,9 @@ class Video:
     ext_port = None
     n_orden = None
     buffer_circ = None
+    #flag_webcam = None
+    #video = None
+    flag = 1
 
     # Constantes
     local_ip = "127.0.0.1"
@@ -30,6 +34,8 @@ class Video:
         self.ext_port = ext_port
         self.n_orden = 0
         self.buffer_circ = queue.PriorityQueue(self.fps * 2)  # fps*2secs
+        #self.flag_webcam = flag_webcam
+        #self.video = video
 
         self.socket_send = self.create_socket()
         self.socket_send.bind((ip, ext_port))
@@ -63,9 +69,12 @@ class Video:
         # encimg = encimg.tobytes()
 
         msg = '{}#{}#{}#{}#'.format(self.n_orden, time.time(), self.resol, self.fps)
-        self.socket_send.sendto(bytes(msg + encimg, 'utf-8'),
-                                (self.ext_ip, self.ext_port_udp))  # TODO maybe to_bytes el frame jaj
+        msg = bytes(msg, 'utf-8') + encimg.tobytes()
+        print(self.ext_ip, self.ext_port)
+        self.socket_send.sendto(msg,
+                                (self.ext_ip, self.ext_port))  # TODO maybe to_bytes el frame jaj
         self.n_orden += 1
+
 
     # Funciones para recibir mensajes
     def listening(self):
@@ -74,9 +83,10 @@ class Video:
 
     def recibir_frame(self):
         msg = self.socket_listen.recvfrom(self.buffer_tam)
+        print(msg)
         msg = msg.split(b'#', 4)
 
-        encimg = msg[4]
+        encimg = msg[4].decode()
 
         # Descompresión de los datos, una vez recibidos
         decimg = cv2.imdecode(np.frombuffer(encimg, np.uint8), 1)
@@ -87,9 +97,12 @@ class Video:
         img_tk = ImageTk.PhotoImage(Image.fromarray(cv2_im))
 
         d = {'ts': msg[1], 'resol': msg[2], 'fps': msg[3], 'img_tk': img_tk}
+        self.flag.acquire()
         self.buffer_circ.put(int(msg[0]), d)
+        self.flag.release()
 
     def reproducir(self):
+        self.gui.app.showSubWindow("2")
         while not self.buffer_circ.full():
             continue
         while 1:
@@ -97,4 +110,22 @@ class Video:
                 continue
             d = self.buffer_circ.get()
             img_tk = d['img_tk']
-            # TODO gui
+
+            self.gui.app.openSubWindow("2")
+            self.gui.app.setImageSize("2", 640, 480)
+            self.gui.app.setImageData("2", img_tk, fmt = 'PhotoImage')
+            self.gui.app.stopSubWindow()
+
+
+    def tomadaca(self):
+        self.flag = threading.Lock()
+
+        thread_listen = threading.Thread(target=self.listening)
+        thread_listen.start()
+
+        thread_play = threading.Thread(target=self.reproducir)
+        thread_play.start()
+
+        while 1:
+            frame = self.gui.capturaVideo()
+            self.enviar_frame(frame)

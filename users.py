@@ -120,4 +120,4 @@ def prueba():
     #bicho.register('holi', 1, 2, 4, 4)
     #bicho.quit()
 
-prueba()
+#prueba()
