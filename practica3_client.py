@@ -81,8 +81,8 @@ class VideoClient(object):
 				self.app.setImageData("video", img_tk, fmt='PhotoImage')
 			except Exception:
 				hola = 0
-
-			return frame
+			if self.control.v is not None:
+				self.control.v.enviar_frame(frame)
 		else:
 			print("se liooo")
 		# Los datos "encimg" ya están listos para su envío por la red

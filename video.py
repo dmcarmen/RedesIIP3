@@ -40,7 +40,7 @@ class Video:
         self.socket_send = self.create_socket()
 
         self.socket_listen = self.create_socket()
-        self.socket_listen.bind((ip, ext_port))
+        self.socket_listen.bind(('', local_port))
 
     def create_socket(self):
         """
@@ -96,9 +96,7 @@ class Video:
         img_tk = ImageTk.PhotoImage(Image.fromarray(cv2_im))
 
         d = {'ts': msg[1], 'resol': msg[2], 'fps': msg[3], 'img_tk': img_tk}
-        self.flag.acquire()
-        self.buffer_circ.put(int(msg[0]), d)
-        self.flag.release()
+        self.buffer_circ.put((int(msg[0]), d))
 
     def reproducir(self):
         self.gui.app.showSubWindow("2")
@@ -107,24 +105,21 @@ class Video:
         while 1:
             if self.buffer_circ.empty():
                 continue
-            d = self.buffer_circ.get()
-            img_tk = d['img_tk']
+            d = self.buffer_circ.get()[1]
+            img_tk = d.get('img_tk')
 
+
+            # TODO no va la subwindow
             self.gui.app.openSubWindow("2")
-            self.gui.app.setImageSize("2", 640, 480)
-            self.gui.app.setImageData("2", img_tk, fmt = 'PhotoImage')
+            #self.gui.app.setImageSize("2", 640, 480)
+            self.gui.app.setImageData("video", img_tk, fmt='PhotoImage')
+            #self.gui.app.setImageData("2", img_tk, fmt = 'PhotoImage')
             self.gui.app.stopSubWindow()
 
 
     def tomadaca(self):
-        self.flag = threading.Lock()
-
         thread_listen = threading.Thread(target=self.listening)
         thread_listen.start()
 
         thread_play = threading.Thread(target=self.reproducir)
         thread_play.start()
-
-        while 1:
-            frame = self.gui.capturaVideo()
-            self.enviar_frame(frame)

@@ -12,6 +12,7 @@ class Control:
     socketListen = None
     tcp_port = None
     udp_port = None
+    v = None
 
     # TODO check if needed. tambien si necesitamos dst_ip aqui
     dst_udp_port = None
@@ -107,8 +108,8 @@ class Control:
                 self.video_client.dst_ip = dst_ip
                 self.video_client.dst_port = dst_port
 
-                v = video.Video(self.video_client, dst_ip, int(self.udp_port), int(self.dst_udp_port))
-                v.tomadaca()
+                self.v = video.Video(self.video_client, dst_ip, int(self.udp_port), int(self.dst_udp_port))
+                self.v.tomadaca()
 
                 # TODO threads, video etc
 
@@ -150,9 +151,9 @@ class Control:
 
             self.video_client.dst_ip = dst_ip
             self.video_client.dst_port = self.dst_tcp_port
-            
-            v = video.Video(self.video_client, dst_ip, int(self.udp_port), int(self.dst_udp_port))
-            v.tomadaca()
+
+            self.v = video.Video(self.video_client, dst_ip, int(self.udp_port), int(self.dst_udp_port))
+            self.v.tomadaca()
 
             # TODO threads, video etc
 
