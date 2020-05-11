@@ -1,7 +1,8 @@
 import socket
 
-class Users_descubrimiento:
-    # Información general
+
+class UsersDescubrimiento:
+    # Informacion general
     socket = None
 
     # Constantes
@@ -12,13 +13,13 @@ class Users_descubrimiento:
     def __init__(self):
         """
             Nombre: __init__
-            Descripcion: Constructor de la clase. Crea una conexión con el DS.
+            Descripcion: Constructor de la clase. Crea una conexion con el DS.
             Argumentos:
             Retorno: objecto Users_descubrimiento
         """
-        self.socket = self.create_socket_TCP()
+        self.socket = self.create_socket_tcp()
 
-    def create_socket_TCP(self):
+    def create_socket_tcp(self):
         """
             Nombre: create_socket_TCP
             Descripcion: Funcion para crear un socket TCP.
@@ -47,15 +48,15 @@ class Users_descubrimiento:
             self.socket.send(bytes(msg, 'utf-8'))
             msg = self.socket.recv(self.buffer_tam)
             msg = msg.decode('utf-8')
-        except:
-            print("Error de conexion.")
+        except Exception as e:
+            print("Error de conexion: ", e)
             return None
         return msg
 
     def quit(self):
         """
             Nombre: quit
-            Descripcion: Función para terminar la conexión con el DS.
+            Descripcion: Funcion para terminar la conexion con el DS.
             Argumentos:
             Retorno:
         """
@@ -67,7 +68,7 @@ class Users_descubrimiento:
     def register(self, nick, ip_address, port, password, protocols):
         """
             Nombre: register
-            Descripcion: Función que regista/inicia sesión de un usuario
+            Descripcion: Funcion que regista/inicia sesion de un usuario
             Argumentos:
                 -nick: nick del usuario.
                 -ip_address: IP del usuario.
@@ -88,7 +89,7 @@ class Users_descubrimiento:
     def query(self, nick):
         """
             Nombre: query
-            Descripcion: Función que pregunta por un usuario al DS.
+            Descripcion: Funcion que pregunta por un usuario al DS.
             Argumentos:
                 -nick: nick del usuario.
             Retorno: lista con nick, ip_address, port y protocols del usuario buscado
@@ -101,13 +102,13 @@ class Users_descubrimiento:
         else:
             print(msg)
             user_info = msg.split(' ')
-            user_info[4] = int(user_info[4]) # guardamos el puerto como int
+            user_info[4] = int(user_info[4])  # guardamos el puerto como int
             return user_info[2:]
 
     def list_users(self):
         """
             Nombre: list_users
-            Descripcion: Función que pide la lista de usuarios del DS.
+            Descripcion: Funcion que pide la lista de usuarios del DS.
             Argumentos:
             Retorno:
         """
@@ -116,7 +117,7 @@ class Users_descubrimiento:
             print(msg)
         else:
             # TODO incompleto, añadir a la gui
-            # Vemos el número de usuarios totales para seguir leyendo o no
+            # Vemos el numero de usuarios totales para seguir leyendo o no
             n_users = int(msg.split(' ')[2])
             users = msg.split('#')
             # Si hay menos users hay que seguir pidiendo datos

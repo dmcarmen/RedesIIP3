@@ -3,7 +3,7 @@ import video
 
 
 class Control:
-    # Info general
+    # Informacion general
     video_client = None
     gui = None
     users_descubrimiento = None
@@ -18,7 +18,7 @@ class Control:
             Nombre: __init__
             Descripcion: Constructor de la clase.
             Argumentos:
-                -video_client: objeto de la aplicación
+                -video_client: objeto de la aplicacion
                 -users_descubrimiento: objeto del server de descubrimiento
                 -tcp_port: puerto tcp
                 -udp_port: puerto udp
@@ -37,7 +37,7 @@ class Control:
     def send_msg(self, msg, dst_ip, dst_port):
         """
             Nombre: send_msg
-            Descripcion: Función que envía un mensaje a (dst_ip, dst_port)
+            Descripcion: Funcion que envia un mensaje a (dst_ip, dst_port).
             Argumentos:
                 -msg: mensaje
                 -dst_ip: ip destino
@@ -54,7 +54,7 @@ class Control:
     def calling(self, nick, dst_ip, dst_port):
         """
             Nombre: calling
-            Descripcion: Función que envía un mensaje para establecer llamada
+            Descripcion: Funcion que envia un mensaje para establecer llamada.
             Argumentos:
                 -nick: nick de tu usuario
                 -dst_ip: ip destino
@@ -62,13 +62,13 @@ class Control:
             Retorno: Ninguno
         """
         self.gui.setStatusbar("Llamando a {}...".format(nick), 0)
-        msg = "CALLING {} {}".format(nick, self.udp_port)
+        msg = "CALLING {} {}".format(self.video_client.nick, self.udp_port)
         self.send_msg(msg, dst_ip, dst_port)
 
     def call_hold(self, nick, dst_ip, dst_port):
         """
             Nombre: call_hold
-            Descripcion: Función que envía un mensaje para parar la llamada
+            Descripcion: Funcion que envia un mensaje para parar la llamada.
             Argumentos:
                 -nick: nick de tu usuario
                 -dst_ip: ip destino
@@ -78,12 +78,12 @@ class Control:
         msg = "CALL_HOLD {}".format(nick)
         self.send_msg(msg, dst_ip, dst_port)
         self.gui.setStatusbar("Llamada pausada.", 0)
-        self.video_client.pause_event = True
+        self.video_client.flag_pause = True
 
     def call_resume(self, nick, dst_ip, dst_port):
         """
             Nombre: call_resume
-            Descripcion: Función que envía un mensaje para reanudar la llamada
+            Descripcion: Funcion que envia un mensaje para reanudar la llamada
             Argumentos:
                 -nick: nick de tu usuario
                 -dst_ip: ip destino
@@ -93,12 +93,12 @@ class Control:
         msg = "CALL_RESUME {}".format(nick)
         self.send_msg(msg, dst_ip, dst_port)
         self.gui.setStatusbar("En llamada.", 0)
-        self.video_client.pause_event = False
+        self.video_client.flag_pause = False
 
     def call_end(self, nick, dst_ip, dst_port):
         """
             Nombre: call_end
-            Descripcion: Función que envía un mensaje para terminar la llamada
+            Descripcion: Funcion que envia un mensaje para terminar la llamada
             Argumentos:
                 -nick: nick de tu usuario
                 -dst_ip: ip destino
@@ -109,7 +109,6 @@ class Control:
         self.send_msg(msg, dst_ip, dst_port)
         self.gui.setStatusbar("Llamada finalizada.", 0)
         self.video_client.flag_en_llamada = False
-        # self.video_client.end_event = True
         self.video_client.video = None
 
     # FUNCIONES PARA RECIBIR MENSAJES Y ACTUAR EN CONSECUENCIA
@@ -117,7 +116,7 @@ class Control:
     def calling_handler(self, nick, dst_udp_port):
         """
             Nombre: calling_handler
-            Descripcion: Función que responde a una solicitud de llamada
+            Descripcion: Funcion que responde a una solicitud de llamada.
             Argumentos:
                 -nick: nick del usuario
                 -dst_udp_port: puerto udp destino
@@ -158,42 +157,41 @@ class Control:
     def call_hold_handler(self):
         """
             Nombre: call_hold_handler
-            Descripcion: Función que pausa la llamada
+            Descripcion: Funcion que pausa la llamada.
             Argumentos: Ninguno
             Retorno: Ninguno
         """
         if self.video_client.flag_en_llamada:
             self.gui.setStatusbar("Llamada pausada.", 0)
-            self.video_client.pause_event = True
+            self.video_client.flag_pause = True
 
     def call_resume_handler(self):
         """
             Nombre: call_resume_handler
-            Descripcion: Función que reanuda la llamada
+            Descripcion: Funcion que reanuda la llamada.
             Argumentos: Ninguno
             Retorno: Ninguno
         """
         if self.video_client.flag_en_llamada:
             self.gui.setStatusbar("En llamada.", 0)
-            self.video_client.pause_event = False
+            self.video_client.flag_pause = False
 
     def call_end_handler(self):
         """
             Nombre: call_end_handler
-            Descripcion: Función que finaliza la llamada
+            Descripcion: Funcion que finaliza la llamada.
             Argumentos: Ninguno
             Retorno: Ninguno
         """
         if self.video_client.flag_en_llamada:
             self.gui.setStatusbar("Llamada finalizada.", 0)
             self.video_client.flag_en_llamada = False
-            # self.video_client.end_event = True
             self.video_client.video = None
 
     def call_accepted_handler(self, nick, dst_udp_port):
         """
             Nombre: call_end_handler
-            Descripcion: Función que comienza una llamada tras ser aceptada
+            Descripcion: Funcion que comienza una llamada tras ser aceptada.
             Argumentos:
                 -nick: nick del usuario
                 -dst_udp_port: puerto udp destino
@@ -208,7 +206,6 @@ class Control:
 
             # Actualizamos la informacion necesaria en la app
             self.video_client.flag_en_llamada = True
-            # self.video_client.end_event = False
             self.video_client.dst_ip = dst_ip
             self.video_client.dst_port = user_info[2]
 
@@ -219,7 +216,7 @@ class Control:
     def call_denied_handler(self, nick):
         """
             Nombre: call_denied_handler
-            Descripcion: Función que informa de que la llamada ha sido rechazada
+            Descripcion: Funcion que informa de que la llamada ha sido rechazada.
             Argumentos:
                 -nick: nick del usuario
             Retorno: Ninguno
@@ -230,7 +227,7 @@ class Control:
     def call_busy_handler(self):
         """
             Nombre: call_busy_handler
-            Descripcion: Función que informa de que el usuario ya esta en llamada
+            Descripcion: Funcion que informa de que el usuario ya esta en llamada.
             Argumentos: Ninguno
             Retorno: Ninguno
         """
@@ -242,11 +239,11 @@ class Control:
     def listening(self):
         """
             Nombre: listening
-            Descripcion: Función que recibe mensajes de control
+            Descripcion: Funcion que recibe mensajes de control.
             Argumentos: Ninguno
             Retorno: Ninguno
         """
-        while 1:
+        while not self.video_client.stop_listening:
             host, port = self.socketListen.accept()
             msg = host.recv(1024)
 
@@ -259,7 +256,7 @@ class Control:
     def procesar_peticion(self, msg):
         """
             Nombre: procesar_peticion
-            Descripcion: Función que procesa mensajes de control
+            Descripcion: Funcion que procesa mensajes de control.
             Argumentos:
                 -msg: mensaje a procesar
             Retorno: Ninguno
@@ -267,7 +264,7 @@ class Control:
         campos = msg.split(" ")
         comando = campos[0]
 
-        # Buscamos el comando recibido y llamamos al handler correspondiente
+        # Buscamos el comando recibido y llamamos al handler correspondiente.
         if comando == "CALLING":
             if len(campos) == 3:
                 self.calling_handler(campos[1], campos[2])
