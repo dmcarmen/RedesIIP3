@@ -69,12 +69,10 @@ class Video:
         result, encimg = cv2.imencode('.jpg', frame, encode_param)
         if result == False:
             print('Error al codificar imagen')
-        # encimg = encimg.tobytes()
 
-        msg = '{}#{}#{}#{}#'.format(self.n_orden, time.time(), self.resol, self.fps)
+        msg = '{}#{}#{}#{}#'.format(self.n_orden, time.time(), self.gui.resol, self.fps)
         msg = msg.encode() + encimg.tostring()
-        self.socket_send.sendto(msg,
-                                (self.ext_ip, self.ext_port))  # TODO maybe to_bytes el frame jaj
+        self.socket_send.sendto(msg, (self.ext_ip, self.ext_port))
         self.n_orden += 1
 
 
@@ -101,7 +99,9 @@ class Video:
         cv2_im = cv2.cvtColor(decimg, cv2.COLOR_BGR2RGB)
         img_tk = ImageTk.PhotoImage(Image.fromarray(cv2_im))
 
-        d = {'ts': msg[1], 'resol': msg[2], 'fps': msg[3], 'img_tk': img_tk}
+        #self.medidas_descongestion(float(msg[1].decode()))
+
+        d = {'ts': msg[1].decode(), 'resol': msg[2].decode(), 'fps': msg[3].decode(), 'img_tk': img_tk}
         self.buffer_circ.put((int(msg[0]), d))
 
     def reproducir(self):
@@ -115,17 +115,23 @@ class Video:
                 d = self.buffer_circ.get()[1]
                 img_tk = d.get('img_tk')
 
-
-                # TODO no va la subwindow
+                resol = d.get('resol').split('x')
                 self.gui.app.showSubWindow("2")
-                #self.gui.app.setImageSize("2", 640, 480)
+                self.gui.app.setImageSize("El otro", resol[0], resol[1]) #TODO no se si int
                 self.gui.app.setImageData("El otro", img_tk, fmt='PhotoImage')
-                #self.gui.app.setImageData("2", img_tk, fmt = 'PhotoImage')
 
         photo = ImageTk.PhotoImage(Image.open("imgs/webcam.gif"))
         self.gui.app.setImageData("El otro", photo , fmt='PhotoImage')
         self.gui.app.hideSubWindow("2")
 
+    def medidas_descongestion(self, ts):
+        dif = time.time() - ts
+        if dif < 2.0:
+            self.gui.setImageResolution('HIGH')
+        elif dif < 5.0:
+            self.gui.setImageResolution('MEDIUM')
+        else:
+            self.gui.setImageResolution('LOW')
 
     def tomadaca(self):
         thread_listen = threading.Thread(target=self.listening)

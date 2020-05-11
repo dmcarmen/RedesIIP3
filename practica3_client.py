@@ -28,6 +28,8 @@ class VideoClient(object):
 	end_event = False
 	pause_event = False
 
+	resol = None
+
 	##############################################
 	def __init__(self, window_size):
 
@@ -41,7 +43,7 @@ class VideoClient(object):
 
 		# Registramos la función de captura de video
 		# Esta misma función también sirve para enviar un vídeo
-		self.cap = cv2.VideoCapture("video.mp4")
+		self.cap = cv2.VideoCapture(0)
 		self.app.setPollTime(20)
 		self.app.registerEvent(self.capturaVideo)
 
@@ -58,6 +60,8 @@ class VideoClient(object):
 		# Barra de estado
 		# Debe actualizarse con información útil sobre la llamada (duración, FPS, etc...)
 		self.app.addStatusbar(fields=2)
+
+		self.resol = '640x480' #empezamos con la máxima por defecto
 
 		############################################
 		self.descubrimiento = users.Users_descubrimiento()
@@ -78,34 +82,35 @@ class VideoClient(object):
 		ret, frame = self.cap.read()
 		if ret is True:
 			try:
-				frame = cv2.resize(frame, (640, 480))
-				cv2_im = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+				frame_ver = cv2.resize(frame, (640, 480))
+				cv2_im = cv2.cvtColor(frame_ver, cv2.COLOR_BGR2RGB)
 				img_tk = ImageTk.PhotoImage(Image.fromarray(cv2_im))
 				# Lo mostramos en el GUI
 				self.app.setImageData("video", img_tk, fmt='PhotoImage')
 			except Exception:
-				hola = 0
+				pass
 			if self.control.v is not None:
 				self.control.v.enviar_frame(frame)
 		else:
 			print("se liooo")
-		# Los datos "encimg" ya están listos para su envío por la red
-		# enviar(encimg)
 
 	# Establece la resolución de la imagen capturada
 	def setImageResolution(self, resolution):
 		# Se establece la resolución de captura de la webcam
 		# Puede añadirse algún valor superior si la cámara lo permite
 		# pero no modificar estos
-		if resolution == "LOW":
+		if resolution == "LOW" and self.resol != "160x120":
 			self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 160)
 			self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 120)
-		elif resolution == "MEDIUM":
+			self.resol = "160x120"
+		elif resolution == "MEDIUM" and self.resol != "320x240":
 			self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
 			self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
-		elif resolution == "HIGH":
+			self.resol = "320x240"
+		elif resolution == "HIGH" and self.resol != "640x480":
 			self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 			self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+			self.resol = "640x480"
 
 	# Función que gestiona los callbacks de los botones
 	def buttonsCallback(self, button):
