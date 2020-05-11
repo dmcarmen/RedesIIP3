@@ -23,7 +23,7 @@ class Video:
 
     # Constantes
     local_ip = "127.0.0.1"
-    buffer_tam = 2048  # TODO no se que tam
+    buffer_tam = 65536  # TODO no se que tam
     fps = 20
     resol = '640x480'
 
@@ -38,9 +38,9 @@ class Video:
         #self.video = video
 
         self.socket_send = self.create_socket()
-        self.socket_send.bind((ip, ext_port))
 
         self.socket_listen = self.create_socket()
+        self.socket_listen.bind((ip, ext_port))
 
     def create_socket(self):
         """
@@ -70,7 +70,6 @@ class Video:
 
         msg = '{}#{}#{}#{}#'.format(self.n_orden, time.time(), self.resol, self.fps)
         msg = bytes(msg, 'utf-8') + encimg.tobytes()
-        print(self.ext_ip, self.ext_port)
         self.socket_send.sendto(msg,
                                 (self.ext_ip, self.ext_port))  # TODO maybe to_bytes el frame jaj
         self.n_orden += 1
@@ -82,11 +81,11 @@ class Video:
             self.recibir_frame()
 
     def recibir_frame(self):
-        msg = self.socket_listen.recvfrom(self.buffer_tam)
-        print(msg)
+        msg, ip = self.socket_listen.recvfrom(self.buffer_tam)
+
         msg = msg.split(b'#', 4)
 
-        encimg = msg[4].decode()
+        encimg = msg[4]
 
         # Descompresión de los datos, una vez recibidos
         decimg = cv2.imdecode(np.frombuffer(encimg, np.uint8), 1)
