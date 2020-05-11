@@ -88,7 +88,12 @@ class VideoClient(object):
 			if self.control.v is not None:
 				self.control.v.enviar_frame(frame)
 		else:
-			print("se liooo")
+			frame = cv2.imread("imgs/webcam.jpeg")
+			photo = ImageTk.PhotoImage(Image.open("imgs/webcam.jpeg"))
+			self.app.setImageData("video", photo, fmt='PhotoImage')
+
+			if self.control.v is not None:
+				self.control.v.enviar_frame(frame)
 		# Los datos "encimg" ya están listos para su envío por la red
 		# enviar(encimg)
 
