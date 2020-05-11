@@ -1,5 +1,4 @@
 import socket
-import users
 import video
 
 
@@ -8,28 +7,26 @@ class Control:
     video_client = None
     gui = None
     users_descubrimiento = None
-    ip = None
     socketListen = None
-    tcp_port = None
     udp_port = None
-    v = None
-
-    # TODO check if needed. tambien si necesitamos dst_ip aqui
-    dst_udp_port = None
-    dst_tcp_port = None
 
     # Constantes
-    max_conexiones = 10
+    max_conexiones = 5
 
-    # TODO errores al conectar/enviar
-    # TODO what we are doing with protocols_dst
-    # TODO servidor de descubrimiento
-    def __init__(self, video_client, users_descubrimiento, ip, tcp_port, udp_port):
+    def __init__(self, video_client, users_descubrimiento, tcp_port, udp_port):
+        """
+            Nombre: __init__
+            Descripcion: Constructor de la clase.
+            Argumentos:
+                -video_client: objeto de la aplicación
+                -users_descubrimiento: objeto del server de descubrimiento
+                -tcp_port: puerto tcp
+                -udp_port: puerto udp
+            Retorno: objecto Control
+        """
         self.video_client = video_client
         self.gui = video_client.app
         self.users_descubrimiento = users_descubrimiento
-        self.ip = ip
-        self.tcp_port = tcp_port
         self.udp_port = udp_port
 
         # Creamos el socket para recibir mensajes del resto de usuarios
@@ -37,169 +34,280 @@ class Control:
         self.socketListen.bind(("", tcp_port))
         self.socketListen.listen(self.max_conexiones)
 
-    # TODO lo de estatico
     def send_msg(self, msg, dst_ip, dst_port):
+        """
+            Nombre: send_msg
+            Descripcion: Función que envía un mensaje a (dst_ip, dst_port)
+            Argumentos:
+                -msg: mensaje
+                -dst_ip: ip destino
+                -dst_port: puerto destino
+            Retorno: Ninguno
+        """
         socket_send = socket.socket()
         socket_send.connect((dst_ip, dst_port))
-        socket_send.send(bytes(msg,'utf-8'))
+        socket_send.send(bytes(msg, 'utf-8'))
         socket_send.close()
 
-    # Funciones que envian mensajes de control
+    # FUNCIONES PARA ENVIAR MENSAJES DE CONTROL
+
     def calling(self, nick, dst_ip, dst_port):
+        """
+            Nombre: calling
+            Descripcion: Función que envía un mensaje para establecer llamada
+            Argumentos:
+                -nick: nick de tu usuario
+                -dst_ip: ip destino
+                -dst_port: puerto destino
+            Retorno: Ninguno
+        """
         self.gui.setStatusbar("Llamando a {}...".format(nick), 0)
         msg = "CALLING {} {}".format(nick, self.udp_port)
         self.send_msg(msg, dst_ip, dst_port)
 
     def call_hold(self, nick, dst_ip, dst_port):
+        """
+            Nombre: call_hold
+            Descripcion: Función que envía un mensaje para parar la llamada
+            Argumentos:
+                -nick: nick de tu usuario
+                -dst_ip: ip destino
+                -dst_port: puerto destino
+            Retorno: Ninguno
+        """
         msg = "CALL_HOLD {}".format(nick)
         self.send_msg(msg, dst_ip, dst_port)
         self.gui.setStatusbar("Llamada pausada.", 0)
         self.video_client.pause_event = True
 
     def call_resume(self, nick, dst_ip, dst_port):
+        """
+            Nombre: call_resume
+            Descripcion: Función que envía un mensaje para reanudar la llamada
+            Argumentos:
+                -nick: nick de tu usuario
+                -dst_ip: ip destino
+                -dst_port: puerto destino
+            Retorno: Ninguno
+        """
         msg = "CALL_RESUME {}".format(nick)
         self.send_msg(msg, dst_ip, dst_port)
         self.gui.setStatusbar("En llamada.", 0)
         self.video_client.pause_event = False
 
     def call_end(self, nick, dst_ip, dst_port):
+        """
+            Nombre: call_end
+            Descripcion: Función que envía un mensaje para terminar la llamada
+            Argumentos:
+                -nick: nick de tu usuario
+                -dst_ip: ip destino
+                -dst_port: puerto destino
+            Retorno: Ninguno
+        """
         msg = "CALL_END {}".format(nick)
         self.send_msg(msg, dst_ip, dst_port)
         self.gui.setStatusbar("Llamada finalizada.", 0)
         self.video_client.flag_en_llamada = False
-        self.video_client.end_event = True
-        self.v = None
+        # self.video_client.end_event = True
+        self.video_client.video = None
 
-    # Funciones para enviar mensajes de respuesta a CALLING
-    def call_accepted(self, nick, dst_ip, dst_port):
-        msg = "CALL_ACCEPTED {} {}".format(nick, self.udp_port)
-        self.send_msg(msg, dst_ip, dst_port)
+    # FUNCIONES PARA RECIBIR MENSAJES Y ACTUAR EN CONSECUENCIA
 
-    def call_denied(self, nick, dst_ip, dst_port):
-        msg = "CALL_DENIED {}".format(nick)
-        self.send_msg(msg, dst_ip, dst_port)
-
-    def call_busy(self, dst_ip, dst_port):
-        msg = "CALL_BUSY"
-        self.send_msg(msg, dst_ip, dst_port)
-
-    # Funciones para realizar las acciones necesarias tras procesar mensaje
     def calling_handler(self, nick, dst_udp_port):
-
+        """
+            Nombre: calling_handler
+            Descripcion: Función que responde a una solicitud de llamada
+            Argumentos:
+                -nick: nick del usuario
+                -dst_udp_port: puerto udp destino
+            Retorno: Ninguno
+        """
+        # Hallamos la informacion del usuario
         user_info = self.users_descubrimiento.query(nick)
         dst_ip = user_info[1]
         dst_port = user_info[2]
-        protocolos = user_info[3]  # TODO que hacer con protocolos
 
+        # Si no estamos en llamada
         if not self.video_client.flag_en_llamada:
-
+            # Pregunta si quieres aceptar la llamada
             res = self.gui.yesNoBox("Llamada entrante", nick)
             if res:
-                self.video_client.flag_en_llamada = True
-                self.video_client.end_event = False
-
-                self.call_accepted(self.video_client.nick, dst_ip, dst_port)
-                self.dst_udp_port = dst_udp_port
-                self.dst_tcp_port = dst_port
+                msg = "CALL_ACCEPTED {} {}".format(self.video_client.nick, self.udp_port)
+                self.send_msg(msg, dst_ip, dst_port)
                 self.gui.setStatusbar("En llamada.", 0)
 
+                # Actualizamos la informacion necesaria en la app
+                self.video_client.flag_en_llamada = True
                 self.video_client.dst_ip = dst_ip
                 self.video_client.dst_port = dst_port
 
-                self.v = video.Video(self.video_client, dst_ip, int(self.udp_port), int(self.dst_udp_port))
-                self.v.tomadaca()
-
-                # TODO threads, video etc
+                # Comenzamos la llamada
+                self.video_client.video = video.Video(self.video_client, dst_ip,
+                                                      int(self.udp_port), int(dst_udp_port))
+                self.video_client.video.llamada()
 
             else:
-                self.call_denied(nick, dst_ip, dst_port)
+                msg = "CALL_DENIED {}".format(nick)
+                self.send_msg(msg, dst_ip, dst_port)
 
         else:
-            self.call_busy(dst_ip, dst_port)
+            msg = "CALL_BUSY"
+            self.send_msg(msg, dst_ip, dst_port)
 
-    def call_hold_handler(self, nick):
+    def call_hold_handler(self):
+        """
+            Nombre: call_hold_handler
+            Descripcion: Función que pausa la llamada
+            Argumentos: Ninguno
+            Retorno: Ninguno
+        """
         if self.video_client.flag_en_llamada:
             self.gui.setStatusbar("Llamada pausada.", 0)
             self.video_client.pause_event = True
 
-    def call_resume_handler(self, nick):
+    def call_resume_handler(self):
+        """
+            Nombre: call_resume_handler
+            Descripcion: Función que reanuda la llamada
+            Argumentos: Ninguno
+            Retorno: Ninguno
+        """
         if self.video_client.flag_en_llamada:
             self.gui.setStatusbar("En llamada.", 0)
             self.video_client.pause_event = False
 
-    def call_end_handler(self, nick):
+    def call_end_handler(self):
+        """
+            Nombre: call_end_handler
+            Descripcion: Función que finaliza la llamada
+            Argumentos: Ninguno
+            Retorno: Ninguno
+        """
         if self.video_client.flag_en_llamada:
-            self.dst_tcp_port = None
-            self.dst_udp_port = None
-
             self.gui.setStatusbar("Llamada finalizada.", 0)
             self.video_client.flag_en_llamada = False
-            self.video_client.end_event = True
-            self.v = None
+            # self.video_client.end_event = True
+            self.video_client.video = None
 
     def call_accepted_handler(self, nick, dst_udp_port):
+        """
+            Nombre: call_end_handler
+            Descripcion: Función que comienza una llamada tras ser aceptada
+            Argumentos:
+                -nick: nick del usuario
+                -dst_udp_port: puerto udp destino
+            Retorno: Ninguno
+        """
         if not self.video_client.flag_en_llamada:
             user_info = self.users_descubrimiento.query(nick)
             dst_ip = user_info[1]
-            self.dst_tcp_port = user_info[2]
-            self.dst_udp_port = dst_udp_port
-            self.video_client.flag_en_llamada = True
-            self.video_client.end_event = False
 
-            self.gui.infoBox("Informacinó de llamada", "{} ha aceptado tu llamada.".format(nick))
+            self.gui.infoBox("Información de llamada", "{} ha aceptado tu llamada.".format(nick))
             self.gui.setStatusbar("En llamada.", 0)
 
+            # Actualizamos la informacion necesaria en la app
+            self.video_client.flag_en_llamada = True
+            # self.video_client.end_event = False
             self.video_client.dst_ip = dst_ip
-            self.video_client.dst_port = self.dst_tcp_port
+            self.video_client.dst_port = user_info[2]
 
-            self.v = video.Video(self.video_client, dst_ip, int(self.udp_port), int(self.dst_udp_port))
-            self.v.tomadaca()
-
-            # TODO threads, video etc
+            # Comenzamos la llamada
+            self.video_client.video = video.Video(self.video_client, dst_ip, int(self.udp_port), int(dst_udp_port))
+            self.video_client.video.llamada()
 
     def call_denied_handler(self, nick):
+        """
+            Nombre: call_denied_handler
+            Descripcion: Función que informa de que la llamada ha sido rechazada
+            Argumentos:
+                -nick: nick del usuario
+            Retorno: Ninguno
+        """
         self.gui.infoBox("Información de llamada", "{} no ha aceptado tu llamada.".format(nick))
         self.gui.setStatusbar("", 0)
 
     def call_busy_handler(self):
+        """
+            Nombre: call_busy_handler
+            Descripcion: Función que informa de que el usuario ya esta en llamada
+            Argumentos: Ninguno
+            Retorno: Ninguno
+        """
         self.gui.infoBox("Información de llamada", "El usuario se encuentra en una llamada.")
         self.gui.setStatusbar("", 0)
 
-    # Funciones para recibir y procesar peticiones
+    # FUNCIONES PARA RECIBIR Y PROCESAR PETICIONES
+
     def listening(self):
-        while 1:  # TODO flag o similar para parar
+        """
+            Nombre: listening
+            Descripcion: Función que recibe mensajes de control
+            Argumentos: Ninguno
+            Retorno: Ninguno
+        """
+        while 1:
             host, port = self.socketListen.accept()
             msg = host.recv(1024)
 
             if msg:
                 msg = msg.decode('utf-8')
                 print("Mensaje recibido:" + msg)
+                # Procesamos la peticion
                 self.procesar_peticion(msg)
 
     def procesar_peticion(self, msg):
+        """
+            Nombre: procesar_peticion
+            Descripcion: Función que procesa mensajes de control
+            Argumentos:
+                -msg: mensaje a procesar
+            Retorno: Ninguno
+        """
         campos = msg.split(" ")
         comando = campos[0]
 
-        # TODO maybe check resto de parametros?
+        # Buscamos el comando recibido y llamamos al handler correspondiente
         if comando == "CALLING":
-            self.calling_handler(campos[1], campos[2])
+            if len(campos) == 3:
+                self.calling_handler(campos[1], campos[2])
+            else:
+                print("Mensaje incorrecto")
 
         elif comando == "CALL_HOLD":
-            self.call_hold_handler(campos[1])
+            if len(campos) == 2:
+                self.call_hold_handler()
+            else:
+                print("Mensaje incorrecto")
 
         elif comando == "CALL_RESUME":
-            self.call_resume_handler(campos[1])
+            if len(campos) == 2:
+                self.call_resume_handler()
+            else:
+                print("Mensaje incorrecto")
 
         elif comando == "CALL_END":
-            self.call_end_handler(campos[1])
+            if len(campos) == 2:
+                self.call_end_handler()
+            else:
+                print("Mensaje incorrecto")
 
         elif comando == "CALL_ACCEPTED":
-            self.call_accepted_handler(campos[1], campos[2])
+            if len(campos) == 3:
+                self.call_accepted_handler(campos[1], campos[2])
+            else:
+                print("Mensaje incorrecto")
 
         elif comando == "CALL_DENIED":
-            self.call_denied_handler(campos[1])
+            if len(campos) == 2:
+                self.call_denied_handler(campos[1])
+            else:
+                print("Mensaje incorrecto")
 
         elif comando == "CALL_BUSY":
-            self.call_busy_handler()
+            if len(campos) == 1:
+                self.call_busy_handler()
+            else:
+                print("Mensaje incorrecto")
         else:
-            print("Mensaje incorrecto")  # TODO que hacer cuando mensaje distino
+            print("Mensaje incorrecto")
