@@ -68,6 +68,7 @@ class Control:
         self.gui.setStatusbar("Llamada finalizada.", 0)
         self.video_client.flag_en_llamada = False
         self.video_client.end_event = True
+        self.v = None
 
     # Funciones para enviar mensajes de respuesta a CALLING
     def call_accepted(self, nick, dst_ip, dst_port):
@@ -95,6 +96,8 @@ class Control:
             res = self.gui.yesNoBox("Llamada entrante", nick)
             if res:
                 self.video_client.flag_en_llamada = True
+                self.video_client.end_event = False
+
                 self.call_accepted(self.video_client.nick, dst_ip, dst_port)
                 self.dst_udp_port = dst_udp_port
                 self.dst_tcp_port = dst_port
@@ -132,6 +135,7 @@ class Control:
             self.gui.setStatusbar("Llamada finalizada.", 0)
             self.video_client.flag_en_llamada = False
             self.video_client.end_event = True
+            self.v = None
 
     def call_accepted_handler(self, nick, dst_udp_port):
         if not self.video_client.flag_en_llamada:
@@ -140,6 +144,7 @@ class Control:
             self.dst_tcp_port = user_info[2]
             self.dst_udp_port = dst_udp_port
             self.video_client.flag_en_llamada = True
+            self.video_client.end_event = False
 
             self.gui.infoBox("Informacinó de llamada", "{} ha aceptado tu llamada.".format(nick))
             self.gui.setStatusbar("En llamada.", 0)

@@ -41,7 +41,7 @@ class VideoClient(object):
 
 		# Registramos la función de captura de video
 		# Esta misma función también sirve para enviar un vídeo
-		self.cap = cv2.VideoCapture(0)
+		self.cap = cv2.VideoCapture("video.mp4")
 		self.app.setPollTime(20)
 		self.app.registerEvent(self.capturaVideo)
 

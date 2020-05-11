@@ -38,9 +38,12 @@ class Video:
         #self.video = video
 
         self.socket_send = self.create_socket()
+        self.socket_send.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         self.socket_listen = self.create_socket()
+        self.socket_listen.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket_listen.bind(('', local_port))
+
 
     def create_socket(self):
         """
