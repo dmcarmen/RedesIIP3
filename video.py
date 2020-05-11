@@ -77,8 +77,12 @@ class Video:
 
     # Funciones para recibir mensajes
     def listening(self):
-        while 1:  # TODO cuando acabar
-            self.recibir_frame()
+        while not self.gui.end_event:  # TODO cuando acabar
+            if not self.gui.pause_event:
+                self.recibir_frame()
+
+        self.socket_listen.close()
+        self.socket_send.close()
 
     def recibir_frame(self):
         msg, ip = self.socket_listen.recvfrom(self.buffer_tam)
@@ -88,7 +92,6 @@ class Video:
         encimg = msg[4]
         # Descompresión de los datos, una vez recibidos
         decimg = cv2.imdecode(np.frombuffer(encimg, np.uint8), 1)
-        print(decimg)
 
         # Conversión de formato para su uso en el GUI
         # TODO maybe frame = cv2.resize(decimg, (resW,resH)); cv2_im = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
@@ -102,19 +105,23 @@ class Video:
         self.gui.app.showSubWindow("2")
         while not self.buffer_circ.full():
             continue
-        while 1:
-            if self.buffer_circ.empty():
-                continue
-            d = self.buffer_circ.get()[1]
-            img_tk = d.get('img_tk')
+        while not self.gui.end_event:
+            if not self.gui.pause_event:
+                if self.buffer_circ.empty():
+                    continue
+                d = self.buffer_circ.get()[1]
+                img_tk = d.get('img_tk')
 
 
-            # TODO no va la subwindow
-            self.gui.app.openSubWindow("2")
-            #self.gui.app.setImageSize("2", 640, 480)
-            self.gui.app.setImageData("video", img_tk, fmt='PhotoImage')
-            #self.gui.app.setImageData("2", img_tk, fmt = 'PhotoImage')
-            self.gui.app.stopSubWindow()
+                # TODO no va la subwindow
+                self.gui.app.showSubWindow("2")
+                #self.gui.app.setImageSize("2", 640, 480)
+                self.gui.app.setImageData("El otro", img_tk, fmt='PhotoImage')
+                #self.gui.app.setImageData("2", img_tk, fmt = 'PhotoImage')
+
+        photo = ImageTk.PhotoImage(Image.open("imgs/webcam.gif"))
+        self.gui.app.setImageData("El otro", photo , fmt='PhotoImage')
+        self.gui.app.hideSubWindow("2")
 
 
     def tomadaca(self):

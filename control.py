@@ -18,11 +18,6 @@ class Control:
     dst_udp_port = None
     dst_tcp_port = None
 
-    # TODO check this
-    pause_event = None
-    end_event = None
-    flag_en_llamada = False
-
     # Constantes
     max_conexiones = 10
 
@@ -59,20 +54,20 @@ class Control:
         msg = "CALL_HOLD {}".format(nick)
         self.send_msg(msg, dst_ip, dst_port)
         self.gui.setStatusbar("Llamada pausada.", 0)
-        self.pause_event.set()
+        self.video_client.pause_event = True
 
     def call_resume(self, nick, dst_ip, dst_port):
         msg = "CALL_RESUME {}".format(nick)
         self.send_msg(msg, dst_ip, dst_port)
         self.gui.setStatusbar("En llamada.", 0)
-        self.pause_event.clear()
+        self.video_client.pause_event = False
 
     def call_end(self, nick, dst_ip, dst_port):
         msg = "CALL_END {}".format(nick)
         self.send_msg(msg, dst_ip, dst_port)
         self.gui.setStatusbar("Llamada finalizada.", 0)
-        #self.end_event.set()
-        self.flag_en_llamada = False
+        self.video_client.flag_en_llamada = False
+        self.video_client.end_event = True
 
     # Funciones para enviar mensajes de respuesta a CALLING
     def call_accepted(self, nick, dst_ip, dst_port):
@@ -95,11 +90,11 @@ class Control:
         dst_port = user_info[2]
         protocolos = user_info[3]  # TODO que hacer con protocolos
 
-        if not self.flag_en_llamada:
+        if not self.video_client.flag_en_llamada:
 
             res = self.gui.yesNoBox("Llamada entrante", nick)
             if res:
-                self.flag_en_llamada = True
+                self.video_client.flag_en_llamada = True
                 self.call_accepted(self.video_client.nick, dst_ip, dst_port)
                 self.dst_udp_port = dst_udp_port
                 self.dst_tcp_port = dst_port
@@ -120,31 +115,31 @@ class Control:
             self.call_busy(dst_ip, dst_port)
 
     def call_hold_handler(self, nick):
-        if self.flag_en_llamada:
+        if self.video_client.flag_en_llamada:
             self.gui.setStatusbar("Llamada pausada.", 0)
-            self.pause_event.set()
+            self.video_client.pause_event = True
 
     def call_resume_handler(self, nick):
-        if self.flag_en_llamada:
+        if self.video_client.flag_en_llamada:
             self.gui.setStatusbar("En llamada.", 0)
-            self.pause_event.clear()
+            self.video_client.pause_event = False
 
     def call_end_handler(self, nick):
-        if self.flag_en_llamada:
+        if self.video_client.flag_en_llamada:
             self.dst_tcp_port = None
             self.dst_udp_port = None
 
             self.gui.setStatusbar("Llamada finalizada.", 0)
-            #self.end_event.set()
-            self.flag_en_llamada = False
+            self.video_client.flag_en_llamada = False
+            self.video_client.end_event = True
 
     def call_accepted_handler(self, nick, dst_udp_port):
-        if not self.flag_en_llamada:
+        if not self.video_client.flag_en_llamada:
             user_info = self.users_descubrimiento.query(nick)
             dst_ip = user_info[1]
             self.dst_tcp_port = user_info[2]
             self.dst_udp_port = dst_udp_port
-            self.flag_en_llamada = True
+            self.video_client.flag_en_llamada = True
 
             self.gui.infoBox("Informacinó de llamada", "{} ha aceptado tu llamada.".format(nick))
             self.gui.setStatusbar("En llamada.", 0)

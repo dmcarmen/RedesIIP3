@@ -24,6 +24,10 @@ class VideoClient(object):
 	dst_ip = None
 	dst_port = None
 
+	flag_en_llamada = False
+	end_event = False
+	pause_event = False
+
 	##############################################
 	def __init__(self, window_size):
 
@@ -49,7 +53,7 @@ class VideoClient(object):
 		self.app.hideSubWindow("2")
 
 		# Añadir los botones
-		self.app.addButtons(["Conectar", "Colgar", "Salir"], self.buttonsCallback)
+		self.app.addButtons(["Conectar", "Pausar/Reanudar", "Colgar", "Salir"], self.buttonsCallback)
 
 		# Barra de estado
 		# Debe actualizarse con información útil sobre la llamada (duración, FPS, etc...)
@@ -119,10 +123,16 @@ class VideoClient(object):
 			self.control.calling(self.nick, info[1], info[2])
 
 		elif button == "Colgar":
-			if self.dst_ip is not None:
+			if self.flag_en_llamada:
 				self.control.call_end(self.nick,self.dst_ip, self.dst_port)
 				self.dst_ip = None
 				self.dst_port = None
+		elif button == "Pausar/Reanudar":
+			if self.flag_en_llamada:
+				if self.pause_event:
+					self.control.call_resume(self.nick,self.dst_ip, self.dst_port)
+				else:
+					self.control.call_hold(self.nick, self.dst_ip, self.dst_port)
 
 
 if __name__ == '__main__':
