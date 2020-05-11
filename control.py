@@ -243,7 +243,7 @@ class Control:
             Argumentos: Ninguno
             Retorno: Ninguno
         """
-        while not self.video_client.stop_listening:
+        while 1:
             host, port = self.socketListen.accept()
             msg = host.recv(1024)
 

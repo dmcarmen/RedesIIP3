@@ -31,11 +31,6 @@ class VideoClient(object):
     # Resolucion
     resol = None
 
-    # Para parar de escuchar comandos de control
-    thread = None
-    stop_listening = False
-
-
     def __init__(self, window_size):
         """
             Nombre: __init__
@@ -79,8 +74,9 @@ class VideoClient(object):
         self.descubrimiento.register(self.nick, self.ip_address, self.tcp_port, self.password, self.protocols)
         self.control = control.Control(self, self.descubrimiento, self.tcp_port, self.udp_port)
         # Creamos el hilo para escuchar los comandos de control
-        self.thread = threading.Thread(target=self.control.listening)
-        self.thread.start()
+        thread = threading.Thread(target=self.control.listening)
+        thread.daemon = True
+        thread.start()
 
     def start(self):
         """
@@ -156,7 +152,6 @@ class VideoClient(object):
         """
 
         if button == "Salir":
-            self.stop_listening = True
             # Salimos de la aplicacion
             self.app.stop()
         elif button == "Conectar":
