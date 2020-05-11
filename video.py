@@ -40,7 +40,7 @@ class Video:
         self.socket_send = self.create_socket()
 
         self.socket_listen = self.create_socket()
-        self.socket_listen.bind((ip, ext_port))
+        self.socket_listen.bind(("", local_port))
 
     def create_socket(self):
         """
@@ -69,7 +69,7 @@ class Video:
         # encimg = encimg.tobytes()
 
         msg = '{}#{}#{}#{}#'.format(self.n_orden, time.time(), self.resol, self.fps)
-        msg = bytes(msg, 'utf-8') + encimg.tobytes()
+        msg = msg.encode() + encimg.tostring()
         self.socket_send.sendto(msg,
                                 (self.ext_ip, self.ext_port))  # TODO maybe to_bytes el frame jaj
         self.n_orden += 1
@@ -86,9 +86,9 @@ class Video:
         msg = msg.split(b'#', 4)
 
         encimg = msg[4]
-
         # Descompresión de los datos, una vez recibidos
         decimg = cv2.imdecode(np.frombuffer(encimg, np.uint8), 1)
+        print(decimg)
 
         # Conversión de formato para su uso en el GUI
         # TODO maybe frame = cv2.resize(decimg, (resW,resH)); cv2_im = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
