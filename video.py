@@ -149,7 +149,7 @@ class Video:
         if  self.last_one < n:
             self.last_one = n
             d = {'ts': ts, 'resol': msg[2].decode(), 'fps': int(msg[3].decode()), 'img_tk': img_tk}
-            self.buffer_circ.put(n, d))
+            self.buffer_circ.put((n, d))
 
     def medidas_descongestion(self, media):
         """
