@@ -24,6 +24,7 @@ class Video:
     # Constantes
     local_ip = "127.0.0.1"
     buffer_tam = 65536  # TODO no se que tam
+    last_one = -1
     fps = 20
     resol = '640x480'
 
@@ -34,6 +35,9 @@ class Video:
         self.ext_port = ext_port
         self.n_orden = 0
         self.buffer_circ = queue.PriorityQueue(self.fps * 2)  # fps*2secs
+
+        self.contador = 0
+        self.media = 0
         #self.flag_webcam = flag_webcam
         #self.video = video
 
@@ -99,14 +103,22 @@ class Video:
         cv2_im = cv2.cvtColor(decimg, cv2.COLOR_BGR2RGB)
         img_tk = ImageTk.PhotoImage(Image.fromarray(cv2_im))
 
-        #self.medidas_descongestion(float(msg[1].decode()))
+        dif = time.time() - float(msg[1].decode())
+        self.media = self.media + dif
+        self.contador = 1 + self.contador
+        if self.contador == 100:
+            self.medidas_descongestion(self.media/100)
+            self.contador=0
+            self.media=0
 
         d = {'ts': msg[1].decode(), 'resol': msg[2].decode(), 'fps': msg[3].decode(), 'img_tk': img_tk}
-        self.buffer_circ.put((int(msg[0]), d))
+
+        if  self.last_one < int(msg[0]):
+            self.last_one = int(msg[0])
+            self.buffer_circ.put((int(msg[0]), d))
 
     def reproducir(self):
-        self.gui.app.showSubWindow("2")
-        while not self.buffer_circ.full():
+        while self.buffer_circ.qsize() < self.fps//2: #1 cuarto lleno
             continue
         while not self.gui.end_event:
             if not self.gui.pause_event:
@@ -124,11 +136,10 @@ class Video:
         self.gui.app.setImageData("El otro", photo , fmt='PhotoImage')
         self.gui.app.hideSubWindow("2")
 
-    def medidas_descongestion(self, ts):
-        dif = time.time() - ts
-        if dif < 2.0:
+    def medidas_descongestion(self, media):
+        if media < 2.0:
             self.gui.setImageResolution('HIGH')
-        elif dif < 5.0:
+        elif media < 5.0:
             self.gui.setImageResolution('MEDIUM')
         else:
             self.gui.setImageResolution('LOW')
