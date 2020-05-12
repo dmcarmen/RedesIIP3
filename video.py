@@ -145,7 +145,6 @@ class Video:
         # Añadimos al buffer circular la imagen si es posterior a la ultima reproducida
         n = int(msg[0])  # numero de orden del mensaje recibido
         if self.last_one < n:
-            self.last_one = n
             d = {'ts': ts, 'resol': msg[2].decode(), 'fps': int(msg[3].decode()), 'img_tk': img_tk}
             self.buffer_circ.put((n, d))
 
@@ -183,8 +182,12 @@ class Video:
                     continue
 
                 # Cogemos el siguiente elemento de la cola
-                d = self.buffer_circ.get()[1]
+                elem = self.buffer_circ.get()
+                # Actualizamos el numero del ultimo frame mostrado
+                self.last_one = elem[0]
+                d = elem[1]
                 img_tk = d.get('img_tk')
+
 
                 # Cambiamos la resolucion de la segunda pantalla a la de la img
                 # y la mostramos
