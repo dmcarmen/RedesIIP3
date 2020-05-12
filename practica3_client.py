@@ -211,13 +211,13 @@ class VideoClient(object):
 
             # Si falta alguno pedimos que los rellene
             if not nick or not password or not ip_address or not tcp_port or not udp_port:
-                self.app.warningBox("falta", "Rellena todos los campos.")
+                self.app.warningBox("Error en parámetros", "Rellena todos los campos.")
 
             else:
                 # Registramos al usuario en el DS
                 msg = self.descubrimiento.register(nick, ip_address, tcp_port, password, protocols)
                 if msg == 'NOK WRONG_PASS':
-                    self.app.warningBox("contraseña", "Contraseña incorrecta. Intenta iniciar sesión de nuevo.")
+                    self.app.warningBox("Contraseña incorrecta", "Intenta iniciar sesión de nuevo.")
                 # Si es correcto guardamos los datos y enseñamos los botones siguientes
                 elif msg.split(' ')[0] == 'OK':
                     self.nick = nick
