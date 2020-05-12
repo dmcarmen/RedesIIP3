@@ -4,6 +4,7 @@ import cv2
 import users
 import control
 import threading
+import os.path
 
 
 class VideoClient(object):
@@ -16,13 +17,16 @@ class VideoClient(object):
     nick = None  # "usuario2" #"usuario1"
     ip_address = None # "127.0.0.1"
     tcp_port = None  # 49154 #49152
-    udp_port = 49153  # 49155
+    udp_port = None #49153  # 49155
     password = None
     protocols = None # 'V0'
 
     # Informacion del destino
     dst_ip = None
     dst_port = None
+
+    # Lista de usuarios del DS
+    d_users = None
 
     # Flags para saber si en llamada o en pausa
     flag_en_llamada = False
@@ -48,12 +52,6 @@ class VideoClient(object):
         self.app.addLabel("title", "Cliente Multimedia P2P - Redes2 ")
         self.app.addImage("video", "imgs/webcam.gif")
 
-        # Registramos la funcion de captura de video
-        # Esta misma funcion tambien sirve para enviar un video
-        self.cap = cv2.VideoCapture(0)
-        self.app.setPollTime(20)
-        self.app.registerEvent(self.capturaVideo)
-
         # La ventana del otro video
         self.app.startSubWindow("Llamada")
         self.app.addImage("Llamada", "imgs/webcam.gif")
@@ -61,7 +59,8 @@ class VideoClient(object):
         self.app.hideSubWindow("Llamada")
 
         # Añadir los botones
-        self.app.addButtons(["Iniciar sesión", "Mostrar usuarios", "Conectar", "Pausar/Reanudar", "Colgar", "Salir"], self.buttonsCallback)
+        self.app.addButtons(["Elegir fuente","Iniciar sesión", "Mostrar usuarios", "Conectar", "Pausar/Reanudar", "Colgar", "Salir"], self.buttonsCallback)
+        self.app.hideButton("Iniciar sesión")
         self.app.hideButton("Mostrar usuarios")
         self.app.hideButton("Conectar")
         self.app.hideButton("Pausar/Reanudar")
@@ -155,13 +154,16 @@ class VideoClient(object):
             # Salimos de la aplicacion
             self.app.stop()
         elif button == "Conectar":
-            # Entrada del nick del usuario a conectar
-            nick = self.app.textBox("Conexión",
-                                    "Introduce el nick del usuario a buscar")
-            info = self.descubrimiento.query(nick)
-            self.dst_ip = info[1]
-            self.dst_port = info[2]
-            self.control.calling(nick, info[1], info[2])
+            if not self.flag_en_llamada:
+                # Entrada del nick del usuario a conectar
+                nick = self.app.textBox("Conexión",
+                                        "Introduce el nick del usuario a buscar")
+                info = self.descubrimiento.query(nick)
+                self.dst_ip = info[1]
+                self.dst_port = info[2]
+                self.control.calling(nick, info[1], info[2])
+            else:
+                self.app.warningBox("En llamada", "Ya estás en llamada.")
 
         elif button == "Colgar":
             # Si nos encontramos en llamada, se finaliza
@@ -186,7 +188,8 @@ class VideoClient(object):
             self.app.addLabelEntry("Nick:")
             self.app.addLabelSecretEntry("Contraseña:")
             self.app.addLabelEntry("Dirección IP:")
-            self.app.addLabelEntry("Puerto:")
+            self.app.addLabelEntry("Puerto TCP:")
+            self.app.addLabelEntry("Puerto UDP:")
 
             self.app.addButtons(["Iniciar"], self.buttonsCallback)
             self.app.showSubWindow("Inicio de sesión")
@@ -196,10 +199,11 @@ class VideoClient(object):
             nick = self.app.getEntry("Nick:")
             password = self.app.getEntry("Contraseña:")
             ip_address = self.app.getEntry("Dirección IP:")
-            tcp_port = self.app.getEntry("Puerto:")
+            tcp_port = self.app.getEntry("Puerto TCP:")
+            udp_port = self.app.getEntry("Puerto UDP:")
             protocols = "V0"
 
-            if not nick or not password or not ip_address or not tcp_port:
+            if not nick or not password or not ip_address or not tcp_port or not udp_port:
                 self.app.warningBox("falta", "Rellena todos los campos.")
 
             else:
@@ -213,6 +217,7 @@ class VideoClient(object):
                     self.ip_address = ip_address
                     self.tcp_port = int(tcp_port)
                     self.protocols = protocols
+                    self.udp_port = udp_port
 
                     self.app.hideSubWindow("Inicio de sesión")
 
@@ -229,10 +234,52 @@ class VideoClient(object):
                     thread.daemon = True
                     thread.start()
 
+        elif button == "Mostrar usuarios":
+            self.d_users = self.descubrimiento.list_users()
 
-        elif button == "Listar usuarios y conectar":
-            pass
+            self.app.startSubWindow("Usuarios")
+            self.app.addListBox('lista', self.d_users.keys())
 
+            self.app.addButton("Llamar", self.buttonsCallback)
+
+            self.app.showSubWindow("Usuarios")
+            self.app.stopSubWindow()
+
+        elif button == "Llamar":
+            if not self.flag_en_llamada:
+                nick = self.app.getListBox('lista')[0]
+                d = self.d_users[nick]
+                self.control.calling(nick, d['ip'], int(d['puerto']))
+            else:
+                self.app.warningBox("En llamada", "Ya estás en llamada.")
+
+        elif button == "Elegir fuente":
+            self.app.startSubWindow("Fuente video")
+            self.app.addLabelEntry("Path:")
+            self.app.addButtons(["Cámara", "Archivo"], self.buttonsCallback)
+            self.app.showSubWindow("Fuente video")
+            self.app.stopSubWindow()
+
+        elif button == "Cámara":
+            # Registramos la funcion de captura de video
+            self.cap = cv2.VideoCapture(0)
+            self.app.setPollTime(20)
+            self.app.registerEvent(self.capturaVideo)
+            self.app.hideSubWindow("Fuente video")
+            self.app.hideButton("Elegir fuente")
+            self.app.showButton("Iniciar sesión")
+
+        elif button == "Archivo":
+            path = self.app.getEntry("Path:")
+            if os.path.isfile(path):
+                self.cap = cv2.VideoCapture(path)
+                self.app.setPollTime(20)
+                self.app.registerEvent(self.capturaVideo)
+                self.app.hideSubWindow("Fuente video")
+                self.app.hideButton("Elegir fuente")
+                self.app.showButton("Iniciar sesión")
+            else:
+                self.app.warningBox("Path incorrecto", "El archivo no existe.")
 
 if __name__ == '__main__':
     vc = VideoClient("640x520")
