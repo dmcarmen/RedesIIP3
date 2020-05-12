@@ -35,8 +35,6 @@ class Control:
         self.socketListen.bind(("", tcp_port))
         self.socketListen.listen(self.max_conexiones)
 
-        self.socket_send = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
     def send_msg(self, msg, dst_ip, dst_port):
         """
             Nombre: send_msg
@@ -47,7 +45,10 @@ class Control:
                 -dst_port: puerto destino
             Retorno: Ninguno
         """
-        self.socket_send.send(bytes(msg, 'utf-8'))
+        socket_send = socket.socket()
+        socket_send.connect((dst_ip, dst_port))
+        socket_send.send(bytes(msg, 'utf-8'))
+        socket_send.close()
 
     # FUNCIONES PARA ENVIAR MENSAJES DE CONTROL
 
@@ -110,7 +111,6 @@ class Control:
         self.gui.setStatusbar("Llamada finalizada.", 0)
         self.video_client.flag_en_llamada = False
         self.video_client.video = None
-        self.socket_send.close()
 
     # FUNCIONES PARA RECIBIR MENSAJES Y ACTUAR EN CONSECUENCIA
 
@@ -188,7 +188,6 @@ class Control:
             self.gui.setStatusbar("Llamada finalizada.", 0)
             self.video_client.flag_en_llamada = False
             self.video_client.video = None
-            self.socket_send.close()
 
     def call_accepted_handler(self, nick, dst_udp_port):
         """
@@ -202,12 +201,6 @@ class Control:
         if not self.video_client.flag_en_llamada:
             user_info = self.users_descubrimiento.query(nick)
             dst_ip = user_info[1]
-
-            print(dst_ip, dst_udp_port)
-            try:
-                self.socket_send.connect((dst_ip, dst_udp_port))
-            except:
-                print("en fin")
 
             self.gui.infoBox("Información de llamada", "{} ha aceptado tu llamada.".format(nick))
             self.gui.setStatusbar("En llamada.", 0)
