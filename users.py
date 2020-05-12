@@ -70,21 +70,21 @@ class UsersDescubrimiento:
     def register(self, nick, ip_address, port, password, protocols):
         """
             Nombre: register
-            Descripcion: Funcion que regista/inicia sesion de un usuario
+            Descripcion: Funcion que regista/inicia sesión de un usuario
             Argumentos:
                 -nick: nick del usuario.
                 -ip_address: IP del usuario.
                 -port: puerto UDP del usuario.
                 -password: contraseña.
                 -protocols: protocolos que soporta.
-            Retorno:
+            Retorno: mensaje recibido
         """
         msg = "REGISTER {} {} {} {} {}".format(nick, ip_address, port, password, protocols)
 
         msg = self.send_recv(msg)
         if msg:
             print(msg)
-        return msg
+            return msg
 
     def query(self, nick):
         """
@@ -107,13 +107,13 @@ class UsersDescubrimiento:
             Nombre: list_users
             Descripcion: Funcion que pide la lista de usuarios del DS.
             Argumentos:
-            Retorno:
+            Retorno: diccionario cuyas keys son los usuarios y los valores
+                otro diccionario con la ip y el puerto
         """
         msg = self.send_recv("LIST_USERS")
         if msg == 'NOK USER_UNKNOWN' or None:
             print(msg)
         else:
-            # TODO incompleto, añadir a la gui
             # Vemos el numero de usuarios totales para seguir leyendo o no
             n_users = int(msg.split(' ')[2])
             users = msg.split('#')

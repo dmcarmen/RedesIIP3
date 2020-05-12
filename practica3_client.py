@@ -8,7 +8,7 @@ import os.path
 
 
 class VideoClient(object):
-
+    # Onjetos de cada clase
     descubrimiento = None
     control = None
     video = None
@@ -52,13 +52,13 @@ class VideoClient(object):
         self.app.addLabel("title", "Cliente Multimedia P2P - Redes2 ")
         self.app.addImage("video", "imgs/webcam.gif")
 
-        # La ventana del otro video
+        # La ventana del video de la llamada
         self.app.startSubWindow("Llamada")
         self.app.addImage("Llamada", "imgs/webcam.gif")
         self.app.stopSubWindow()
         self.app.hideSubWindow("Llamada")
 
-        # Añadir los botones
+        # Añadir los botones y escondemos los botones que todavía no se pueden utilizar
         self.app.addButtons(["Elegir fuente","Iniciar sesión", "Mostrar usuarios", "Conectar", "Pausar/Reanudar", "Colgar", "Salir"], self.buttonsCallback)
         self.app.hideButton("Iniciar sesión")
         self.app.hideButton("Mostrar usuarios")
@@ -70,12 +70,10 @@ class VideoClient(object):
         # Debe actualizarse con informacion util sobre la llamada (duracion, FPS, etc...)
         self.app.addStatusbar(fields=2)
 
-        self.resol = '640x480'  # empezamos con la maxima por defecto
+        self.resol = '640x480'  # empezamos con la máxima resolución por defecto
 
-        # Creamos el servidor de descubrimiento
+        # Creamos la clase de conexión con el servidor de descubrimiento
         self.descubrimiento = users.UsersDescubrimiento()
-
-
 
     def start(self):
         """
@@ -152,16 +150,20 @@ class VideoClient(object):
 
         if button == "Salir":
             # Salimos de la aplicacion
+            self.descubrimiento.quit()
             self.app.stop()
         elif button == "Conectar":
+            # Llamamos al usuario si no estamos en llamada
             if not self.flag_en_llamada:
                 # Entrada del nick del usuario a conectar
                 nick = self.app.textBox("Conexión",
                                         "Introduce el nick del usuario a buscar")
-                info = self.descubrimiento.query(nick)
-                self.dst_ip = info[1]
-                self.dst_port = info[2]
-                self.control.calling(nick, info[1], info[2])
+                # Evitamos llamarnos a nosotros mismos
+                if nick != self.nick:
+                    info = self.descubrimiento.query(nick)
+                    self.dst_ip = info[1]
+                    self.dst_port = info[2]
+                    self.control.calling(nick, info[1], info[2])
             else:
                 self.app.warningBox("En llamada", "Ya estás en llamada.")
 
@@ -171,6 +173,7 @@ class VideoClient(object):
                 self.control.call_end(self.nick, self.dst_ip, self.dst_port)
                 self.dst_ip = None
                 self.dst_port = None
+
         elif button == "Pausar/Reanudar":
             # Se comprueba que nos encontramos en llamada
             if self.flag_en_llamada:
@@ -182,6 +185,7 @@ class VideoClient(object):
                     self.control.call_hold(self.nick, self.dst_ip, self.dst_port)
 
         elif button == "Iniciar sesión":
+            # Creamos una nueva ventana para introducir los datos
             self.app.startSubWindow("Inicio de sesión")
 
             # Campos a rellenar para iniciar sesión
@@ -191,11 +195,13 @@ class VideoClient(object):
             self.app.addLabelEntry("Puerto TCP:")
             self.app.addLabelEntry("Puerto UDP:")
 
+            # Añadimos el botón para enviar los datos
             self.app.addButtons(["Iniciar"], self.buttonsCallback)
             self.app.showSubWindow("Inicio de sesión")
             self.app.stopSubWindow()
 
         elif button == "Iniciar":
+            # Cogemos los datos introducidos
             nick = self.app.getEntry("Nick:")
             password = self.app.getEntry("Contraseña:")
             ip_address = self.app.getEntry("Dirección IP:")
@@ -203,14 +209,16 @@ class VideoClient(object):
             udp_port = self.app.getEntry("Puerto UDP:")
             protocols = "V0"
 
+            # Si falta alguno pedimos que los rellene
             if not nick or not password or not ip_address or not tcp_port or not udp_port:
                 self.app.warningBox("falta", "Rellena todos los campos.")
 
             else:
+                # Registramos al usuario en el DS
                 msg = self.descubrimiento.register(nick, ip_address, tcp_port, password, protocols)
                 if msg == 'NOK WRONG_PASS':
                     self.app.warningBox("contraseña", "Contraseña incorrecta. Intenta iniciar sesión de nuevo.")
-
+                # Si es correcto guardamos los datos y enseñamos los botones siguientes
                 elif msg.split(' ')[0] == 'OK':
                     self.nick = nick
                     self.password = password
@@ -220,8 +228,8 @@ class VideoClient(object):
                     self.udp_port = udp_port
 
                     self.app.hideSubWindow("Inicio de sesión")
-
                     self.app.hideButton("Iniciar sesión")
+
                     self.app.showButton("Colgar")
                     self.app.showButton("Mostrar usuarios")
                     self.app.showButton("Conectar")
@@ -235,6 +243,7 @@ class VideoClient(object):
                     thread.start()
 
         elif button == "Mostrar usuarios":
+            # Obtenemos la lista de usuarios y la mostramos en una nueva ventana
             self.d_users = self.descubrimiento.list_users()
 
             self.app.startSubWindow("Usuarios")
@@ -246,6 +255,7 @@ class VideoClient(object):
             self.app.stopSubWindow()
 
         elif button == "Llamar":
+            # Si no estamos en llamada, llamamos al user marcado
             if not self.flag_en_llamada:
                 nick = self.app.getListBox('lista')[0]
                 d = self.d_users[nick]
@@ -254,6 +264,7 @@ class VideoClient(object):
                 self.app.warningBox("En llamada", "Ya estás en llamada.")
 
         elif button == "Elegir fuente":
+            # Abrimos una nueva ventana para elegir si cogemos un vídeo o nuestra cámara
             self.app.startSubWindow("Fuente video")
             self.app.addLabelEntry("Path:")
             self.app.addButtons(["Cámara", "Archivo"], self.buttonsCallback)
@@ -261,7 +272,7 @@ class VideoClient(object):
             self.app.stopSubWindow()
 
         elif button == "Cámara":
-            # Registramos la funcion de captura de video
+            # Registramos la funcion de captura de video a la cámara
             self.cap = cv2.VideoCapture(0)
             self.app.setPollTime(20)
             self.app.registerEvent(self.capturaVideo)
@@ -270,7 +281,9 @@ class VideoClient(object):
             self.app.showButton("Iniciar sesión")
 
         elif button == "Archivo":
+            # Registramos la funcion de captura de video al video
             path = self.app.getEntry("Path:")
+            # Comprobamos que exista
             if os.path.isfile(path):
                 self.cap = cv2.VideoCapture(path)
                 self.app.setPollTime(20)
