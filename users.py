@@ -127,10 +127,8 @@ class UsersDescubrimiento:
             # Quitamos la primera parte del mensaje para obtener el primer usuario
             user1 = users[0].split(' ')[3:]
             d[user1[0]] = {'ip': user1[1], 'puerto': user1[2]}
-            print(' '.join(user1))
             # El resto aparecen normal
             for u in users[1:]:
-                print(u)
                 u2 =u.split(' ')
                 if len(u2) == 4:
                     d[u2[0]] = {'ip': u2[1], 'puerto': u2[2] }
