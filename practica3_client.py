@@ -13,12 +13,12 @@ class VideoClient(object):
     video = None
 
     # Informacion del usuario
-    nick = "usuario1"  # "usuario2"
-    ip_address = "127.0.0.1"
-    tcp_port = 49152  # 49154
+    nick = None  # "usuario2" #"usuario1"
+    ip_address = None # "127.0.0.1"
+    tcp_port = None  # 49154 #49152
     udp_port = 49153  # 49155
-    password = "kk"
-    protocols = "V0"
+    password = None
+    protocols = None # 'V0'
 
     # Informacion del destino
     dst_ip = None
@@ -61,7 +61,11 @@ class VideoClient(object):
         self.app.hideSubWindow("Llamada")
 
         # Añadir los botones
-        self.app.addButtons(["Conectar", "Pausar/Reanudar", "Colgar", "Salir"], self.buttonsCallback)
+        self.app.addButtons(["Iniciar sesión", "Mostrar usuarios", "Conectar", "Pausar/Reanudar", "Colgar", "Salir"], self.buttonsCallback)
+        self.app.hideButton("Mostrar usuarios")
+        self.app.hideButton("Conectar")
+        self.app.hideButton("Pausar/Reanudar")
+        self.app.hideButton("Colgar")
 
         # Barra de estado
         # Debe actualizarse con informacion util sobre la llamada (duracion, FPS, etc...)
@@ -69,14 +73,10 @@ class VideoClient(object):
 
         self.resol = '640x480'  # empezamos con la maxima por defecto
 
-        # Creamos el servidor de descubrimiento y el objeto Control
+        # Creamos el servidor de descubrimiento
         self.descubrimiento = users.UsersDescubrimiento()
-        self.descubrimiento.register(self.nick, self.ip_address, self.tcp_port, self.password, self.protocols)
-        self.control = control.Control(self, self.descubrimiento, self.tcp_port, self.udp_port)
-        # Creamos el hilo para escuchar los comandos de control
-        thread = threading.Thread(target=self.control.listening)
-        thread.daemon = True
-        thread.start()
+
+
 
     def start(self):
         """
@@ -179,11 +179,63 @@ class VideoClient(object):
                 else:
                     self.control.call_hold(self.nick, self.dst_ip, self.dst_port)
 
+        elif button == "Iniciar sesión":
+            self.app.startSubWindow("Inicio de sesión")
+
+            # Campos a rellenar para iniciar sesión
+            self.app.addLabelEntry("Nick:")
+            self.app.addLabelSecretEntry("Contraseña:")
+            self.app.addLabelEntry("Dirección IP:")
+            self.app.addLabelEntry("Puerto:")
+
+            self.app.addButtons(["Iniciar"], self.buttonsCallback)
+            self.app.showSubWindow("Inicio de sesión")
+            self.app.stopSubWindow()
+
+        elif button == "Iniciar":
+            nick = self.app.getEntry("Nick:")
+            password = self.app.getEntry("Contraseña:")
+            ip_address = self.app.getEntry("Dirección IP:")
+            tcp_port = self.app.getEntry("Puerto:")
+            protocols = "V0"
+
+            if not nick or not password or not ip_address or not tcp_port:
+                self.app.warningBox("falta", "Rellena todos los campos.")
+
+            else:
+                msg = self.descubrimiento.register(nick, ip_address, tcp_port, password, protocols)
+                if msg == 'NOK WRONG_PASS':
+                    self.app.warningBox("contraseña", "Contraseña incorrecta. Intenta iniciar sesión de nuevo.")
+
+                elif msg.split(' ')[0] == 'OK':
+                    self.nick = nick
+                    self.password = password
+                    self.ip_address = ip_address
+                    self.tcp_port = int(tcp_port)
+                    self.protocols = protocols
+
+                    self.app.hideSubWindow("Inicio de sesión")
+
+                    self.app.hideButton("Iniciar sesión")
+                    self.app.showButton("Colgar")
+                    self.app.showButton("Mostrar usuarios")
+                    self.app.showButton("Conectar")
+                    self.app.showButton("Pausar/Reanudar")
+
+                    # Creamos el objeto de control
+                    self.control = control.Control(self, self.descubrimiento, self.tcp_port, self.udp_port)
+                    # Creamos el hilo para escuchar los comandos de control
+                    thread = threading.Thread(target=self.control.listening)
+                    thread.daemon = True
+                    thread.start()
+
+
+        elif button == "Listar usuarios y conectar":
+            pass
+
 
 if __name__ == '__main__':
     vc = VideoClient("640x520")
 
     # Lanza el bucle principal del GUI
-    # El control ya NO vuelve de esta funcion, por lo que todas las
-    # acciones deberan ser gestionadas desde callbacks y threads
     vc.start()

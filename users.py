@@ -28,7 +28,7 @@ class UsersDescubrimiento:
         """
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            print("Socket creado")
+            print("Socket de comunicación con DS creado")
         except socket.error as err:
             print("La creación del socket falló: error {}".format(err))
             return None
@@ -51,6 +51,8 @@ class UsersDescubrimiento:
         except Exception as e:
             print("Error de conexion: ", e)
             return None
+        if msg == None:
+            print('Error al recibir el mensaje')
         return msg
 
     def quit(self):
@@ -80,11 +82,9 @@ class UsersDescubrimiento:
         msg = "REGISTER {} {} {} {} {}".format(nick, ip_address, port, password, protocols)
 
         msg = self.send_recv(msg)
-        if msg == 'NOK WRONG_PASS' or None:
+        if msg:
             print(msg)
-        else:
-            # TODO incompleto, añadir a la gui
-            print(msg)
+        return msg
 
     def query(self, nick):
         """
@@ -96,10 +96,7 @@ class UsersDescubrimiento:
         """
         msg = "QUERY {}".format(nick)
         msg = self.send_recv(msg)
-        if msg == 'NOK USER_UNKNOWN' or None:
-            print(msg)
-            # TODO incompleto, añadir a la gui
-        else:
+        if msg:
             print(msg)
             user_info = msg.split(' ')
             user_info[4] = int(user_info[4])  # guardamos el puerto como int
