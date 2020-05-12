@@ -7,8 +7,7 @@ class Control:
     video_client = None
     gui = None
     users_descubrimiento = None
-    socketListen = None
-    socket_send = None
+    socket_listen = None
     udp_port = None
 
     # Constantes
@@ -31,9 +30,10 @@ class Control:
         self.udp_port = udp_port
 
         # Creamos el socket para recibir mensajes del resto de usuarios
-        self.socketListen = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socketListen.bind(("", tcp_port))
-        self.socketListen.listen(self.max_conexiones)
+        self.socket_listen = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket_listen.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket_listen.bind(("", tcp_port))
+        self.socket_listen.listen(self.max_conexiones)
 
     def send_msg(self, msg, dst_ip, dst_port):
         """
@@ -245,7 +245,7 @@ class Control:
             Retorno: Ninguno
         """
         while 1:
-            host, port = self.socketListen.accept()
+            host, port = self.socket_listen.accept()
             msg = host.recv(1024)
 
             if msg:
