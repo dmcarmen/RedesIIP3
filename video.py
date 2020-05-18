@@ -27,7 +27,7 @@ class Video:
     fps = 20
 
     delay = 0.4
-    u = 0.1
+    u = 0.04
     v = 0
     K = 1
     tolerance = 0.1
@@ -162,6 +162,14 @@ class Video:
             self.video_client.setImageResolution('LOW')
 
     def pop_frame(self):
+        """
+            Nombre: pop_frame
+            Descripcion: Funcion que extrae un frame del buffer circular, calcula
+                el delay, la variación y lo manda a reproducir de acuerdo a estos
+                valores.
+            Argumentos:
+            Retorno:
+        """
         while self.video_client.flag_en_llamada:
             if not self.video_client.flag_pause:
                 # Si el buffer esta vacio esperamos a que llegue algun frame
@@ -176,6 +184,7 @@ class Video:
                 r = time.time()
                 # Descartamos los paquetes que no permiten la retransmision en vivo (>2s)
                 if (r-t) <= 2:
+                    # Calculamos el delay y la varianza
                     self.delay = (1 - self.u) * self.delay + self.u * (r - t)
                     self.v = (1 - self.u) * self.v + self.u * abs(r-t-self.delay)
                     tp = t + self.delay + self.K*self.v - r
@@ -196,6 +205,7 @@ class Video:
             Descripcion: Funcion que reproduce los frames del buffer circular
                 cuando esta en llamada.
             Argumentos:
+                - d: diccionario que contiene la informacion de un frame (ts, resolucion, fps y img_tk)
             Retorno:
         """
         if self.video_client.flag_en_llamada and not self.video_client.flag_pause:
@@ -205,8 +215,11 @@ class Video:
             # y la mostramos
             resol = d.get('resol').split('x')
             self.gui.showSubWindow("Llamada")
-            self.gui.setImageSize("Llamada", resol[0], resol[1])
             self.gui.setImageData("Llamada", img_tk, fmt='PhotoImage')
+            try:
+                self.gui.setImageSize("Llamada", resol[0], resol[1])
+            except:
+                pass
 
     def llamada(self):
         """
