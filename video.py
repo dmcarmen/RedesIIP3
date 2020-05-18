@@ -20,12 +20,17 @@ class Video:
     buffer_circ = None
     n_orden = None
     contador = None
-    media = None
 
     # Constantes
     buffer_tam = 65536  # tamaño buffer recibir datos
     last_one = -1
     fps = 20
+
+    delay = 0.4
+    u = 0.1
+    v = 0
+    K = 1
+    tolerance = 0.1
 
     def __init__(self, video_client, ip, local_port, ext_port):
         """
@@ -49,7 +54,6 @@ class Video:
         self.n_orden = 0
         self.buffer_circ = queue.PriorityQueue(self.fps * 2)  # fps*2secs
         self.contador = 0
-        self.media = 0
 
         # Iniciamos los sockets
         self.socket_send = self.create_socket()
@@ -132,49 +136,32 @@ class Video:
         cv2_im = cv2.cvtColor(decimg, cv2.COLOR_BGR2RGB)
         img_tk = ImageTk.PhotoImage(Image.fromarray(cv2_im))
 
-        # Aplicamos medidas de medidas de descongestion cada 100 mensajes
-        ts = float(msg[1].decode())
-        dif = time.time() - ts
+        # Aplicamos medidas de descongestion cada 100 mensajes
         self.contador = 1 + self.contador
-        self.media = self.media + dif
         if self.contador == 100:
-            self.medidas_descongestion(self.media / 100)
+            self.medidas_descongestion()
             self.contador = 0
-            self.media = 0
 
         # Añadimos al buffer circular la imagen si es posterior a la ultima reproducida
-        n = int(msg[0])  # numero de orden del mensaje recibido
-        if self.last_one < n:
-            d = {'ts': ts, 'resol': msg[2].decode(), 'fps': int(msg[3].decode()), 'img_tk': img_tk}
-            self.buffer_circ.put((n, d))
+        d = {'ts': float(msg[1].decode()), 'resol': msg[2].decode(), 'fps': int(msg[3].decode()), 'img_tk': img_tk}
+        self.buffer_circ.put((int(msg[0]), d))
 
-    def medidas_descongestion(self, media):
+    def medidas_descongestion(self):
         """
             Nombre: medidas_descongestion
             Descripcion: Funcion que ajusta la resolucion segun el retraso de los
                 paquetes.
             Argumentos:
-                -media: media de retraso cada 100 paquetes
             Retorno:
         """
-        if media < 2.0:
+        if self.delay < 0.5:
             self.video_client.setImageResolution('HIGH')
-        elif media < 5.0:
+        elif self.delay < 1.0:
             self.video_client.setImageResolution('MEDIUM')
         else:
             self.video_client.setImageResolution('LOW')
 
-    def reproducir(self):
-        """
-            Nombre: reproducir
-            Descripcion: Funcion que reproduce los frames del buffer circular
-                cuando esta en llamada.
-            Argumentos:
-            Retorno:
-        """
-        # No empezamos a reproducir hasta que al menos 1/4 del buffer este lleno
-        while self.buffer_circ.qsize() < self.fps // 2:
-            continue
+    def pop_frame(self):
         while self.video_client.flag_en_llamada:
             if not self.video_client.flag_pause:
                 # Si el buffer esta vacio esperamos a que llegue algun frame
@@ -182,24 +169,44 @@ class Video:
                     continue
 
                 # Cogemos el siguiente elemento de la cola
-                elem = self.buffer_circ.get()
-                # Actualizamos el numero del ultimo frame mostrado
-                self.last_one = elem[0]
-                d = elem[1]
-                img_tk = d.get('img_tk')
+                d = self.buffer_circ.get()[1]
 
+                # Comprobamos el tiempo en que tiene que ser reproducido
+                t = d.get('ts')
+                r = time.time()
+                # Descartamos los paquetes que no permiten la retransmision en vivo (>2s)
+                if (r-t) <= 2:
+                    self.delay = (1 - self.u) * self.delay + self.u * (r - t)
+                    self.v = (1 - self.u) * self.v + self.u * abs(r-t-self.delay)
+                    tp = t + self.delay + self.K*self.v - r
 
-                # Cambiamos la resolucion de la segunda pantalla a la de la img
-                # y la mostramos
-                resol = d.get('resol').split('x')
-                self.gui.showSubWindow("Llamada")
-                self.gui.setImageSize("Llamada", resol[0], resol[1])
-                self.gui.setImageData("Llamada", img_tk, fmt='PhotoImage')
+                    if tp > self.tolerance:
+                        thread = threading.Timer(tp, self.reproducir, args=(d,))
+                        thread.daemon = True
+                        thread.start()
 
         # Al terminar la llamada escondemos la segunda evntana
         photo = ImageTk.PhotoImage(Image.open("imgs/webcam.gif"))
         self.gui.setImageData("Llamada", photo, fmt='PhotoImage')
         self.gui.hideSubWindow("Llamada")
+
+    def reproducir(self, d):
+        """
+            Nombre: reproducir
+            Descripcion: Funcion que reproduce los frames del buffer circular
+                cuando esta en llamada.
+            Argumentos:
+            Retorno:
+        """
+        if self.video_client.flag_en_llamada and not self.video_client.flag_pause:
+            img_tk = d.get('img_tk')
+
+            # Cambiamos la resolucion de la segunda pantalla a la de la img
+            # y la mostramos
+            resol = d.get('resol').split('x')
+            self.gui.showSubWindow("Llamada")
+            self.gui.setImageSize("Llamada", resol[0], resol[1])
+            self.gui.setImageData("Llamada", img_tk, fmt='PhotoImage')
 
     def llamada(self):
         """
@@ -212,5 +219,5 @@ class Video:
         thread_listen = threading.Thread(target=self.listening)
         thread_listen.start()
 
-        thread_play = threading.Thread(target=self.reproducir)
-        thread_play.start()
+        thread_listen = threading.Thread(target=self.pop_frame)
+        thread_listen.start()
