@@ -122,7 +122,7 @@ class UsersDescubrimiento:
                 msg = msg + self.socket.recv(self.buffer_tam).decode('utf-8')
                 users = msg.split('#')
 
-            print('Lista de {} usuarios:'.format(n_users))
+            print('Lista de {} usuarios recogida.'.format(n_users))
             d = {}
             # Quitamos la primera parte del mensaje para obtener el primer usuario
             user1 = users[0].split(' ')[3:]

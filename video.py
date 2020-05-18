@@ -23,13 +23,12 @@ class Video:
 
     # Constantes
     buffer_tam = 65536  # tamaño buffer recibir datos
-    last_one = -1
     fps = 20
 
     delay = 0.4
     u = 0.04
     v = 0
-    K = 1
+    K = 4
     tolerance = 0.1
 
     def __init__(self, video_client, ip, local_port, ext_port):
